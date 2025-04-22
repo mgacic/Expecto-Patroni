@@ -1,0 +1,160 @@
+---
+- name: Add PostgreSQL repository (Debian/Ubuntu)
+  ansible.builtin.apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install dependencies for Debian-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - libpq-dev
+    - libssl-dev
+    - pgbackrest-{{ pgbackrest_version }}
+    - postgresql-client 
+    - libxml2 
+    - libssh2-1
+    - python3-pip
+  when: ansible_facts['os_family'] == "Debian"  
+
+- name: Install PostgreSQL repo with all repos disabled except the URL
+  ansible.builtin.command: >
+    dnf -y install epel-release https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+  args:
+    warn: false
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Open etcd ports in firewalld
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - 5432
+    - 8008
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+# - name: Create symlink for PostgreSQL data directory
+#   ansible.builtin.file:
+#     src: "{{ pg_data_dir }}"
+#     dest: "{{ pg_db_symlink }}"
+#     state: link
+#   when: pg_data_dir is defined
+
+- name: Install PostgreSQL on RHEL-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - postgresql-libs 
+    - libssh2
+    - postgresql-contrib
+    - postgresql{{ pg_version }}-server
+    - python3-pip
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+# Install Patroni
+- name: Install Patroni with pip (for all supported OSes)
+  ansible.builtin.pip:
+    name: 
+      - patroni
+      - psycopg2-binary
+      - patroni[etcd3]=={{ patroni_version }}
+      - ruamel.yaml
+      - requests
+      - cdiff
+    state: present
+
+# Install Patroni
+- name: Uninstall ydiff with pip (for all supported OSes)
+  ansible.builtin.pip:
+    name: 
+      - ydiff
+    state: absent
+
+- name: Create Patroni config directory
+  ansible.builtin.file:
+    path: "/etc/patroni"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  when: pg_data_dir is defined
+
+- name: Create PostgreSQL data directory
+  ansible.builtin.file:
+    path: "{{ pg_data_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  when: pg_data_dir is defined
+
+# Configure Patroni (example configuration file)
+- name: Deploy etcd environment variables for all users
+  template:
+    src: patroni_profile_env.j2
+    dest: /etc/profile.d/patroni_env.sh
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create Patroni configuration file
+  ansible.builtin.template:
+    src: patroni.yml.j2
+    dest: /etc/patroni/patroni.yml
+    mode: '0600'
+    owner: postgres
+    group: postgres
+
+- name: Create pgbackrest configuration directory
+  file:
+    path: /etc/pgbackrest
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+    
+- name: Create pgbackrest config
+  template:
+    src: pgbackrest.conf.j2
+    dest: /etc/pgbackrest/pgbackrest.conf
+    owner: postgres
+    group: postgres
+    mode: '0640'
+
+- name: Create Patroni systemd service file
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/patroni.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Patroni PostgreSQL High Availability
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=postgres
+      Group=postgres
+      ExecStart=/usr/local/bin/patroni /etc/patroni/patroni.yml
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Reload systemd to pick up new Patroni service
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start Patroni service
+  ansible.builtin.systemd:
+    name: patroni
+    enabled: true
+    state: started
+

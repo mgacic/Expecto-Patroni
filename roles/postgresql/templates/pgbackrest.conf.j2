@@ -1,0 +1,20 @@
+[global]
+{% for host in groups['pgbackrest'] %}
+repo{{ hostvars[host]['pgbackrest_repo_id'] }}-cipher-pass= {{ pgbackrest_cipher_pass }}
+repo{{ hostvars[host]['pgbackrest_repo_id'] }}-cipher-type=aes-256-cbc
+repo{{ hostvars[host]['pgbackrest_repo_id'] }}-host={{ hostvars[host]['inventory_hostname'] }}
+repo{{ hostvars[host]['pgbackrest_repo_id'] }}-host-user={{ pgbackrest_backup_username }}
+repo{{ hostvars[host]['pgbackrest_repo_id'] }}-host-port=22
+{% endfor %}
+log-level-console=info
+log-level-file=info
+archive-push-queue-max=10GiB
+compress-type=lz4
+archive-async=y
+spool-path=/tmp/pgbackrest/spool
+process-max=8
+
+[{{ pgbackrest_stanza }}]
+pg1-path={{ pg_data_dir }}
+
+

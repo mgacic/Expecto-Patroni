@@ -1,0 +1,158 @@
+---
+- name: Add PostgreSQL repository (Debian/Ubuntu)
+  ansible.builtin.apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install dependencies for Debian-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - libpq-dev
+    - libssl-dev
+    - pgbackrest-{{ pgbackrest_version }}
+    - postgresql-client 
+    - libxml2 
+    - libssh2-1
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install PostgreSQL repo with all repos disabled except the URL
+  ansible.builtin.command: >
+    dnf -y install epel-release https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+  args:
+    warn: false
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Install pgBackrest on RHEL-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - pgbackrest-{{ pgbackrest_version }}
+    - postgresql-libs 
+    - libssh2
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Create pgbackrest configuration directory
+  file:
+    path: /etc/pgbackrest
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+
+- name: Create pgbackrest configuration directory
+  file:
+    path: /opt/pgbackrest
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+
+- name: Create pgbackrest log directory
+  file:
+    path: /var/log/pgbackrest
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+
+- name: Create pgbackrest config
+  template:
+    src: pgbackrest.conf.j2
+    dest: /etc/pgbackrest/pgbackrest.conf
+    owner: postgres
+    group: postgres
+    mode: '0640'
+  when: "'pgbackrest' in group_names"
+  
+- name: Create backup script
+  template:
+    src: backup.sh.j2
+    dest: /opt/backup.sh
+    owner: postgres
+    group: postgres
+    mode: '0740'
+  when: "'pgbackrest' in group_names"
+
+- name: Create .pgpass file for pgBackRest
+  template:
+    src: pgpass.yml.j2
+    dest: /var/lib/pgsql/.pgpass
+    owner: postgres
+    group: postgres
+    mode: '0600'
+  when: "'pgbackrest' in group_names"
+
+- name: Create cron job for full backup
+  cron:
+    name: "pgBackRest Full Backup"
+    minute: "{{ pgbackrest_crontab_interval_full.split(' ')[0] }}"
+    hour: "{{ pgbackrest_crontab_interval_full.split(' ')[1] }}"
+    day: "{{ pgbackrest_crontab_interval_full.split(' ')[2] }}"
+    month: "{{ pgbackrest_crontab_interval_full.split(' ')[3] }}"
+    weekday: "{{ pgbackrest_crontab_interval_full.split(' ')[4] }}"
+    job: "/opt/backup.sh -t full -s {{ pgbackrest_stanza }}"
+    user: postgres
+  when: 
+    - pgbackrest_crontab_interval_full is defined
+    - "'pgbackrest' in group_names"
+
+- name: Create cron job for diff backup
+  cron:
+    name: "pgBackRest Diff Backup"
+    minute: "{{ pgbackrest_crontab_interval_diff.split(' ')[0] }}"
+    hour: "{{ pgbackrest_crontab_interval_diff.split(' ')[1] }}"
+    day: "{{ pgbackrest_crontab_interval_diff.split(' ')[2] }}"
+    month: "{{ pgbackrest_crontab_interval_diff.split(' ')[3] }}"
+    weekday: "{{ pgbackrest_crontab_interval_diff.split(' ')[4] }}"
+    job: "/opt/backup.sh -t diff -s {{ pgbackrest_stanza }}"
+    user: postgres
+  when: 
+    - pgbackrest_crontab_interval_diff is defined
+    - "'pgbackrest' in group_names"
+
+- name: Ensure .ssh directory exists for postgres
+  file:
+    path: /var/lib/pgsql/.ssh
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  become: true
+  become_user: postgres
+
+- name: Generate SSH key for postgres user if not present
+  become: true
+  become_user: postgres
+  ansible.builtin.openssh_keypair:
+    path: /var/lib/pgsql/.ssh/id_rsa
+    type: rsa
+    size: 2048
+    owner: postgres
+    group: postgres
+    mode: '0600'
+  when: not ("/var/lib/pgsql/.ssh/id_rsa" is file)
+  
+- name: Read public key
+  become: true
+  become_user: postgres
+  slurp:
+    src: /var/lib/pgsql/.ssh/id_rsa.pub
+  register: postgres_pubkey
+
+- name: Set fact for postgres public key
+  set_fact:
+    postgres_pubkey: "{{ postgres_pubkey.content | b64decode }}"
+
+- name: Add public keys to authorized_keys
+  authorized_key:
+    user: postgres
+    key: "{{ hostvars[item]['postgres_pubkey'] }}"
+    manage_dir: false
+    path: /var/lib/pgsql/.ssh/authorized_keys
+  loop: "{{ (groups['postgres'] + groups['pgbackrest']) | difference([inventory_hostname]) | unique }}"
+  when: hostvars[item].postgres_pubkey is defined
+  become: true       

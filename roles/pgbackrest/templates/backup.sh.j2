@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Parse options
+while getopts "t:s:h" opt; do
+  case ${opt} in
+    t)
+      TYPE=$OPTARG
+      ;;
+    s)
+      STANZA=$OPTARG
+      ;;
+
+    h)
+      echo "Usage: $0 -t <backup_type>"
+      echo "  -t   Backup type (full or diff) [MANDATORY]"
+      echo "  -s   Stanza name  [MANDATORY]"
+      echo "  -h   Show this help message"
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option. Use -h for help."
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "${TYPE}" != "full" && "${TYPE}" != "diff" ]]; then
+        echo "Error: backup type must be defind (full' or 'diff')."
+  exit 1
+fi
+if [[ -z "${STANZA}" ]]; then
+        echo "Error: stanza name must be defind."
+  exit 1
+fi
+
+PATRONI_NODES={{ groups['postgres'] | join(',') }}
+LEADER=""
+REPLICAS=()
+for PATRONI_NODE in ${PATRONI_NODES//,/ }; do
+    status_code=$(curl -m 5 -s -o /dev/null -w "%{http_code}" "http://${PATRONI_NODE}:8008/primary")
+    if [[ "$status_code" == "200" ]]; then
+        LEADER="$PATRONI_NODE"
+    elif [[ "$status_code" == "503" ]]; then
+        REPLICAS+=("$PATRONI_NODE")
+    fi
+done
+
+if [ -z "${LEADER}" ]; then
+  echo "Error: Cannot find primary node!"
+  exit 1
+fi
+
+{% raw %}
+if [[ "${#REPLICAS[@]}" -eq 0 ]]; then
+  echo "Error: Cannot find secondary node!"
+  exit 1
+fi
+{% endraw %}
+
+pg_hosts_list=" --pg1-user={{ pgbackrest_backup_username }} --pg1-host=${LEADER} --pg1-path={{ pg_data_dir }}"
+i=2
+for replica in "${REPLICAS[@]}"; do
+    pg_hosts_list+=" --pg${i}-user={{ pgbackrest_backup_username }} --pg${i}-host=${replica} --pg${i}-path={{ pg_data_dir }}"
+    ((i++))
+done
+
+PGBACKREST_LOG_PATH="{{ pgbackrest_log_path }}"
+
+# Run stanza-create
+pgbackrest --stanza="${STANZA}" --config=/etc/pgbackrest/pgbackrest.conf {% raw %}$( IFS=$' '; echo "${pg_hosts_list[*]}" ) {% endraw %} stanza-create
+
+# Run backup
+pgbackrest --stanza="${STANZA}" --config=/etc/pgbackrest/pgbackrest.conf {% raw %}$( IFS=$' '; echo "${pg_hosts_list[*]}" ) {% endraw %} --repo={{ pgbackrest_repo_id }} --process-max={{ pgbackrest_proccess_max }} --type="${TYPE}" backup
+

@@ -1,0 +1,61 @@
+{% set ip_list = groups['etcd'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list %}
+{% set current_ip = hostvars[inventory_hostname]['ansible_default_ipv4']['address'] %}
+{% set index = ip_list.index(current_ip) %}
+{% if inventory_hostname == current_ip %}
+ETCD_NAME="etcd{{ index + 1 }}"
+{% else %}
+ETCD_NAME="{{ inventory_hostname }}"
+{% endif %}
+
+ETCD_DATA_DIR="/opt/etcd"
+
+# Client settings
+ETCD_LISTEN_CLIENT_URLS="http://{{ ansible_default_ipv4.address }}:2379"
+ETCD_ADVERTISE_CLIENT_URLS="http://{{ ansible_default_ipv4.address }}:2379"
+
+# Peer settings
+ETCD_LISTEN_PEER_URLS="http://{{ ansible_default_ipv4.address }}:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://{{ ansible_default_ipv4.address }}:2380"
+
+# Cluster definition
+ETCD_INITIAL_CLUSTER={% for host in groups['postgres'] -%}
+{% set ip = hostvars[host]['ansible_default_ipv4']['address'] -%}
+{% if host == ip -%}
+etcd{{ loop.index }}=http://{{ ip }}:2380
+{%- else -%}
+{{ host }}=http://{{ ip }}:2380
+{%- endif -%}
+{%- if not loop.last %},{% endif -%}
+{%- endfor %}
+
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCDCTL_API=3
+ETCD_AUTO_COMPACTION_MODE=periodic
+ETCD_AUTO_COMPACTION_RETENTION=1
+
+ETCDCTL_ENDPOINTS={% for host in groups['postgres'] %}http://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+
+# ETCD_CLIENT_SECURE=true
+# ETCD_PEER_SECURE=true
+# ETCDCTL_CERT=
+# ETCDCTL_CACERT=/opt/infobip-pgdev-etcd/ca/infobip.pem
+# ETCDCTL_KEY=/opt/infobip-pgdev-etcd/certs/server.key
+
+
+export ETCD_NAME
+export ETCD_DATA_DIR
+export ETCD_LISTEN_CLIENT_URLS
+export ETCD_ADVERTISE_CLIENT_URLS
+export ETCD_CLIENT_PORT
+export ETCD_LISTEN_PEER_URLS
+export ETCD_INITIAL_ADVERTISE_PEER_URLS
+export ETCD_PEER_PORT
+export ETCD_INITIAL_CLUSTER
+export ETCD_INITIAL_CLUSTER_TOKEN
+export ETCD_INITIAL_CLUSTER_STATE
+export ETCDCTL_API
+export ETCD_AUTO_COMPACTION_MODE
+export ETCD_AUTO_COMPACTION_RETENTION
+export ETCD_LOG_FILE
+export ETCDCTL_ENDPOINTS

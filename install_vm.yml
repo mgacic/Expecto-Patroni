@@ -1,0 +1,24 @@
+- name: Gather facts for all hosts
+  hosts: all
+  gather_facts: yes
+
+- name: Install etcd on etcd hosts
+  hosts: etcd
+  become: true
+  tags: [etcd]
+  roles:
+    - { role: etcd }
+
+- name: Install PostgreSQL on PostgreSQL hosts
+  hosts: postgres
+  become: true
+  tags: [postgres]
+  roles:
+    - { role: postgresql }
+
+- name: Install pgBackRest on PostgreSQL and pgBackRest hosts
+  hosts: "{{ groups['pgbackrest'] + groups['postgres'] | unique }}"
+  become: true
+  tags: [pgbackrest, postgres]
+  roles:
+    - { role: pgbackrest }

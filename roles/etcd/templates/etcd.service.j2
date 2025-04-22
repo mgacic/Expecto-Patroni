@@ -1,0 +1,18 @@
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/coreos/etcd
+After=network.target
+
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/profile.d/etcd_env.sh
+ExecStart=/usr/local/bin/etcd
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+

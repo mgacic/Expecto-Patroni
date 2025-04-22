@@ -1,0 +1,18 @@
+[global]
+repo{{ pgbackrest_repo_id }}-cipher-pass={{ pgbackrest_cipher_pass }}
+repo{{ pgbackrest_repo_id }}-cipher-type=aes-256-cbc
+repo{{ pgbackrest_repo_id }}-path=/opt/pgbackrest
+repo{{ pgbackrest_repo_id }}-retention-full=2
+repo{{ pgbackrest_repo_id }}-retention-diff=2
+repo{{ pgbackrest_repo_id }}-retention-archive-type=diff
+repo{{ pgbackrest_repo_id }}-retention-archive=2
+repo{{ pgbackrest_repo_id }}-bundle=n 
+repo{{ pgbackrest_repo_id }}-bundle-size=1024MiB 
+repo{{ pgbackrest_repo_id }}-bundle-limit=128MiB 
+start-fast=y
+compress-type=lz4
+log-level-console=info
+log-level-file=info
+backup-standby=y
+delta=y
+checksum-page=y

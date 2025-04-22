@@ -1,0 +1,68 @@
+scope: {{ patroni_scope }}
+namespace: {{ patroni_namespace }}
+
+{% set ip_list = groups['postgres'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | list %}
+{% set current_ip = hostvars[inventory_hostname]['ansible_default_ipv4']['address'] %}
+{% set index = ip_list.index(current_ip) %}
+{% if inventory_hostname == current_ip %}
+name: "postgres-{{ index + 1 }}"
+{% else %}
+name: "{{ inventory_hostname }}"
+{% endif %}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: {{ ansible_default_ipv4.address }}:8008
+
+etcd3:
+  hosts: {{ groups['etcd'] | map('regex_replace', '^(.*)$', '\\1:2379') | join(',') }}  
+  
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: {{ ansible_default_ipv4.address }}:5432
+  data_dir: {{ pg_data_dir }}
+  bin_dir: /usr/pgsql-{{ pg_version }}/bin
+  authentication:
+    replication:
+      username: {{ patroni_replication_username }}
+      password: {{ patroni_replication_password }}
+    superuser:
+      username: {{ patroni_superuser_username }}
+      password: {{ patroni_superuser_password }}
+    backup:
+      username: {{ pgbackrest_backup_username }}
+      password: {{ pgbackrest_backup_password }}
+  parameters:
+    archive_mode: "on"
+    log_directory: /var/log/postgres/
+    log_filename: postgresql.log  
+    archive_command: 'pgbackrest --stanza={{ pgbackrest_stanza }} archive-push %p'
+    max_connections: 100
+    shared_buffers: 256MB
+    wal_level: replica
+    hot_standby: "on"
+    max_wal_senders: 5
+    max_replication_slots: 15
+  pg_hba:
+    - local   all           {{ patroni_superuser_username }}                        trust
+    - host    all           {{ patroni_superuser_username }}    127.0.0.1/32        trust
+{% set combined_hosts = (groups['pgbackrest'] + groups['postgres']) | unique %}
+{% for host in combined_hosts %}
+    - host    replication   {{ patroni_replication_username }}  {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32  scram-sha-256
+{% endfor %}
+    - host    all           all   0.0.0.0/0   scram-sha-256
+    
+# Patroni replication and failover settings
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+watchdog:
+  mode: off 
+

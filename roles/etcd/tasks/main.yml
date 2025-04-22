@@ -1,0 +1,76 @@
+---
+- name: Install pgBackrest on RHEL-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - curl
+    - epel-release
+    - tar
+    - unzip
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Download etcd tarball
+  get_url:
+    url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/etcd-{{ etcd_version }}.tar.gz"
+
+- name: Extract etcd binaries
+  unarchive:
+    src: "/tmp/etcd-{{ etcd_version }}.tar.gz"
+    dest: /usr/local
+    remote_src: yes
+    creates: "/usr/local/etcd-{{ etcd_version }}-linux-amd64"
+
+- name: Move etcd binaries to /usr/local/bin
+  copy:
+    remote_src: yes
+    src: "/usr/local/etcd-{{ etcd_version }}-linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: '0755'
+  loop:
+    - etcd
+    - etcdctl
+
+- name: Create etcd data directory
+  file:
+    path: /opt/etcd
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Generate etcd systemd unit file
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    mode: '0644'
+
+- name: Deploy etcd environment variables for all users
+  template:
+    src: etcd_profile_env.j2
+    dest: /etc/profile.d/etcd_env.sh
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Open etcd ports in firewalld
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - 2379
+    - 2380
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start etcd
+  systemd:
+    name: etcd
+    enabled: true
+    state: started
