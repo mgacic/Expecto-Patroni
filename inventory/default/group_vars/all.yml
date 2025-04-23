@@ -3,6 +3,14 @@ patroni_version: "3.3.1"
 etcd_version: "v3.5.1"
 pgbackrest_version: "2.54.2"
 
+etcd_ports:
+  - 2379
+  - 2380
+
+postgres_ports:
+  - 8008
+  - 5432
+
 pgbackrest_repo_id: 1 #default value to be used if not set in inventory file
 pgbackrest_stanza: "default"
 pgbackrest_backup_username: "postgres"
@@ -27,6 +35,29 @@ patroni_superuser_password: postgres_password
 repos_rhel:
   - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
   - epel-release
+
+
+packages_debian_all: 
+  - libxml2 
+  - python3-pip
+  - libssh2-1
+  - curl
+  - tar
+  - unzip
+  - nmon
+  - htop
+  - postgresql-common
+
+packages_debian_postgresql_group:
+  - postgresql-{{ pg_version }}
+  - postgresql-client-{{ pg_version }}
+  - pgbackrest-{{ pgbackrest_version }}
+  - libpq-dev
+
+packages_debian_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-libs
+
 
 packages_rhel_all: 
   - libxml2 

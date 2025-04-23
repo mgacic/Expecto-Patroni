@@ -1,0 +1,23 @@
+
+- name: Add PostgreSQL APT repository using official script
+  ansible.builtin.command: /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+  args:
+    creates: /etc/apt/sources.list.d/pgdg.list
+  become: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install system packages on Debian/Ubuntu
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop: "{{ packages_debian_all + packages_debian_postgresql_group }}"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Allow PostgreSQL ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ postgres_ports }}"
+  when: ansible_facts['os_family'] == 'Debian'

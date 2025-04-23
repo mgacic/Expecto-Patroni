@@ -39,8 +39,8 @@ ETCDCTL_ENDPOINTS={% for host in groups['postgres'] %}http://{{ hostvars[host]['
 # ETCD_CLIENT_SECURE=true
 # ETCD_PEER_SECURE=true
 # ETCDCTL_CERT=
-# ETCDCTL_CACERT=/opt/infobip-pgdev-etcd/ca/infobip.pem
-# ETCDCTL_KEY=/opt/infobip-pgdev-etcd/certs/server.key
+# ETCDCTL_CACERT=?????.pem
+# ETCDCTL_KEY=?????.key
 
 
 export ETCD_NAME
