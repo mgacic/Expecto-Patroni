@@ -1,38 +1,6 @@
 ---
-- name: Add PostgreSQL repository (Debian/Ubuntu)
-  ansible.builtin.apt_key:
-    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
-    state: present
-  when: ansible_facts['os_family'] == "Debian"
-
-- name: Install dependencies for Debian-based systems
-  package:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - libpq-dev
-    - libssl-dev
-    - pgbackrest-{{ pgbackrest_version }}
-    - postgresql-client 
-    - libxml2 
-    - libssh2-1
-  when: ansible_facts['os_family'] == "Debian"
-
-- name: Install PostgreSQL repo with all repos disabled except the URL
-  ansible.builtin.command: >
-    dnf -y install epel-release https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-  args:
-    warn: false
-  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-
-- name: Install pgBackrest on RHEL-based systems
-  package:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - pgbackrest-{{ pgbackrest_version }}
-    - postgresql-libs 
-    - libssh2
+- name: Include RHEL-specific etcd installation tasks
+  include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
 - name: Create pgbackrest configuration directory

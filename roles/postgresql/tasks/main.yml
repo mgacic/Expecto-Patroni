@@ -1,79 +1,14 @@
 ---
-- name: Add PostgreSQL repository (Debian/Ubuntu)
-  ansible.builtin.apt_key:
-    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
-    state: present
-  when: ansible_facts['os_family'] == "Debian"
-
-- name: Install dependencies for Debian-based systems
-  package:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - libpq-dev
-    - libssl-dev
-    - pgbackrest-{{ pgbackrest_version }}
-    - postgresql-client 
-    - libxml2 
-    - libssh2-1
-    - python3-pip
-  when: ansible_facts['os_family'] == "Debian"  
-
-- name: Install PostgreSQL repo with all repos disabled except the URL
-  ansible.builtin.command: >
-    dnf -y install epel-release https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-  args:
-    warn: false
-  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-
-- name: Open etcd ports in firewalld
-  ansible.posix.firewalld:
-    port: "{{ item }}/tcp"
-    permanent: true
-    state: enabled
-    immediate: true
-  loop:
-    - 5432
-    - 8008
-  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-
-# - name: Create symlink for PostgreSQL data directory
-#   ansible.builtin.file:
-#     src: "{{ pg_data_dir }}"
-#     dest: "{{ pg_db_symlink }}"
-#     state: link
-#   when: pg_data_dir is defined
-
-- name: Install PostgreSQL on RHEL-based systems
-  package:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - postgresql-libs 
-    - libssh2
-    - postgresql-contrib
-    - postgresql{{ pg_version }}-server
-    - python3-pip
+- name: Include RHEL-specific etcd installation tasks
+  include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
 # Install Patroni
 - name: Install Patroni with pip (for all supported OSes)
   ansible.builtin.pip:
-    name: 
-      - patroni
-      - psycopg2-binary
-      - patroni[etcd3]=={{ patroni_version }}
-      - ruamel.yaml
-      - requests
-      - cdiff
-    state: present
-
-# Install Patroni
-- name: Uninstall ydiff with pip (for all supported OSes)
-  ansible.builtin.pip:
-    name: 
-      - ydiff
-    state: absent
+    name: "{{ item.name }}"
+    state: "{{ item.state }}" 
+  loop: "{{ packages_postgresql_group_pip }}"
 
 - name: Create Patroni config directory
   ansible.builtin.file:
@@ -82,6 +17,15 @@
     owner: postgres
     group: postgres
     mode: '0700'
+  when: pg_data_dir is defined
+
+- name: Create Patroni config directory
+  ansible.builtin.file:
+    path: "/var/log/postgres/"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
   when: pg_data_dir is defined
 
 - name: Create PostgreSQL data directory

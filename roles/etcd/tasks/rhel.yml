@@ -1,0 +1,17 @@
+- name: Install packages on RHEL-based systems
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_rhel_all }}"
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+
+- name: Open etcd ports in firewalld
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - 2379
+    - 2380
+  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
