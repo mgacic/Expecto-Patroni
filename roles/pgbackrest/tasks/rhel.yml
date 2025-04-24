@@ -5,6 +5,7 @@
     state: present
   loop: "{{ repos_rhel }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+  become: true 
 
 - name: Install pgBackrest on RHEL-based systems
   package:
@@ -12,3 +13,4 @@
     state: present
   loop: "{{ packages_rhel_all + packages_rhel_pgbackrest_group }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+  become: true 

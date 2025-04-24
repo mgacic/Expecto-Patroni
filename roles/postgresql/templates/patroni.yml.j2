@@ -46,6 +46,7 @@ postgresql:
   pg_hba:
     - local   all           {{ patroni_superuser_username }}                        trust
     - host    all           {{ patroni_superuser_username }}    127.0.0.1/32        trust
+    - host    replication   {{ patroni_replication_username }}  127.0.0.1/32        trust    
 {% set combined_hosts = (groups['pgbackrest'] + groups['postgres']) | unique %}
 {% for host in combined_hosts %}
     - host    replication   {{ patroni_replication_username }}  {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32  scram-sha-256

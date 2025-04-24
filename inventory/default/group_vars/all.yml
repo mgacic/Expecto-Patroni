@@ -31,11 +31,9 @@ patroni_replication_password: replication_password
 patroni_superuser_username: postgres
 patroni_superuser_password: postgres_password
 
-
 repos_rhel:
   - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
   - epel-release
-
 
 packages_debian_all: 
   - libxml2 
@@ -57,7 +55,6 @@ packages_debian_postgresql_group:
 packages_debian_pgbackrest_group:
   - pgbackrest-{{ pgbackrest_version }}
   - postgresql-libs
-
 
 packages_rhel_all: 
   - libxml2 

@@ -1,5 +1,5 @@
 ---
-- name: Include RHEL-specific etcd installation tasks
+- name: Include RHEL-specific pgbackrest installation tasks
   include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
@@ -18,6 +18,7 @@
     owner: postgres
     group: postgres
     mode: '0750'
+  when: "'pgbackrest' in group_names"
 
 - name: Create pgbackrest log directory
   file:
@@ -98,12 +99,13 @@
   ansible.builtin.openssh_keypair:
     path: /var/lib/pgsql/.ssh/id_rsa
     type: rsa
-    size: 2048
+    size: 4096
     owner: postgres
     group: postgres
     mode: '0600'
+    comment: "{{ inventory_hostname }}"
   when: not ("/var/lib/pgsql/.ssh/id_rsa" is file)
-  
+
 - name: Read public key
   become: true
   become_user: postgres
@@ -115,12 +117,44 @@
   set_fact:
     postgres_pubkey: "{{ postgres_pubkey.content | b64decode }}"
 
-- name: Add public keys to authorized_keys
+- name: Add pgbackrest public keys to authorized_keys on postgres nodes
   authorized_key:
     user: postgres
     key: "{{ hostvars[item]['postgres_pubkey'] }}"
     manage_dir: false
     path: /var/lib/pgsql/.ssh/authorized_keys
-  loop: "{{ (groups['postgres'] + groups['pgbackrest']) | difference([inventory_hostname]) | unique }}"
-  when: hostvars[item].postgres_pubkey is defined
+  loop: "{{ groups['pgbackrest'] | difference([inventory_hostname]) | unique }}"
+  when: 
+    - hostvars[item].postgres_pubkey is defined 
+    - inventory_hostname in groups['postgres']
   become: true       
+
+- name: Add SSH key of postgres host to known_hosts on pgbackrest
+  ansible.builtin.shell:
+    cmd: "ssh-keyscan -H {{ item }} >> /var/lib/pgsql/.ssh/known_hosts"
+  loop: "{{ groups['pgbackrest'] | unique }}"
+  when: item != inventory_hostname
+  become: true
+  become_user: postgres
+  when: inventory_hostname in groups['postgres']
+
+- name: Add postgres public keys to authorized_keys on pgbackrest nodes
+  authorized_key:
+    user: postgres
+    key: "{{ hostvars[item]['postgres_pubkey'] }}"
+    manage_dir: false
+    path: /var/lib/pgsql/.ssh/authorized_keys
+  loop: "{{ groups['postgres'] | difference([inventory_hostname]) | unique }}"
+  when: 
+    - hostvars[item].postgres_pubkey is defined 
+    - inventory_hostname in groups['pgbackrest']
+  become: true   
+
+- name: Add SSH key of pgbackrest host to known_hosts on postgres
+  ansible.builtin.shell:
+    cmd: "ssh-keyscan -H {{ item }} >> /var/lib/pgsql/.ssh/known_hosts"
+  loop: "{{ groups['postgres'] | unique }}"
+  when: item != inventory_hostname
+  become: true
+  become_user: postgres
+  when: inventory_hostname in groups['pgbackrest']

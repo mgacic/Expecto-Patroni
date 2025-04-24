@@ -4,7 +4,8 @@
     state: present
   loop: "{{ packages_rhel_all }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-
+  become: true 
+  
 - name: Open etcd ports in firewalld
   ansible.posix.firewalld:
     port: "{{ item }}/tcp"
@@ -13,3 +14,4 @@
     immediate: true
   loop: "{{ etcd_ports }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+  become: true 

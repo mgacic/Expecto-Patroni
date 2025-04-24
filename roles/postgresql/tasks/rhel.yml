@@ -12,6 +12,7 @@
     state: present
   loop: "{{ packages_rhel_all + packages_rhel_postgresql_group }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+  become: true 
 
 - name: Open PostgreSQL and Patroni ports in firewalld
   ansible.posix.firewalld:
@@ -19,5 +20,6 @@
     permanent: true
     state: enabled
     immediate: true
-  loop: loop: "{{ postgres_ports }}"
+  loop: "{{ postgres_ports }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+  become: true 
