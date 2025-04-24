@@ -1,5 +1,7 @@
+pgbackrest_repo_id: 1
 pgbackrest_proccess_max: 4
 pgbackrest_backup_username: "superuser"
 pgbackrest_stanza: "main"
+pgbackrest_log_path: "/var/log/pgbackrest/"
 pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
 pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM

@@ -1,0 +1,3 @@
+postgres_ports:
+  - 8008
+  - 5432

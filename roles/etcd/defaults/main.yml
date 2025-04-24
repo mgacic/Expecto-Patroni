@@ -1,0 +1,8 @@
+etcd_cluster_token: "etcd-cluster"
+etcd_election_timeout: 5000
+etcd_hartbeat_interval: 1000
+
+
+etcd_ports:
+  - 2379
+  - 2380

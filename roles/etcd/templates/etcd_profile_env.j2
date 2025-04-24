@@ -12,13 +12,9 @@ ETCD_DATA_DIR="/opt/etcd"
 # Client settings
 ETCD_LISTEN_CLIENT_URLS="http://{{ ansible_default_ipv4.address }}:2379"
 ETCD_ADVERTISE_CLIENT_URLS="http://{{ ansible_default_ipv4.address }}:2379"
-
-# Peer settings
 ETCD_LISTEN_PEER_URLS="http://{{ ansible_default_ipv4.address }}:2380"
 ETCD_INITIAL_ADVERTISE_PEER_URLS="http://{{ ansible_default_ipv4.address }}:2380"
-
-# Cluster definition
-ETCD_INITIAL_CLUSTER={% for host in groups['postgres'] -%}
+ETCD_INITIAL_CLUSTER={% for host in groups['etcd'] -%}
 {% set ip = hostvars[host]['ansible_default_ipv4']['address'] -%}
 {% if host == ip -%}
 etcd{{ loop.index }}=http://{{ ip }}:2380
@@ -27,21 +23,69 @@ etcd{{ loop.index }}=http://{{ ip }}:2380
 {%- endif -%}
 {%- if not loop.last %},{% endif -%}
 {%- endfor %}
-
-ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER_TOKEN= {{ etcd_cluster_token}}
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCDCTL_API=3
 ETCD_AUTO_COMPACTION_MODE=periodic
 ETCD_AUTO_COMPACTION_RETENTION=1
-
+ETCD_ELECTION_TIMEOUT= {{ etcd_election_timeout }}
+ETCD_HEARTBEAT_INTERVAL= {{ etcd_hartbeat_interval }}
 ETCDCTL_ENDPOINTS={% for host in groups['postgres'] %}http://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+
+
+
+
+{% if etcd_tls_enable | default(false) | bool %}
+
+# ETCD_NAME="{{ ansible_hostname }}"
+# ETCD_LISTEN_CLIENT_URLS="{{ patroni_etcd_protocol | default('http', true) }}://{{ inventory_hostname }}:2379,{{ patroni_etcd_protocol | default('http', true) }}://127.0.0.1:2379"
+# ETCD_ADVERTISE_CLIENT_URLS="{{ patroni_etcd_protocol | default('http', true) }}://{{ inventory_hostname }}:2379"
+# ETCD_LISTEN_PEER_URLS="{{ patroni_etcd_protocol | default('http', true) }}://{{ inventory_hostname }}:2380"
+# ETCD_INITIAL_ADVERTISE_PEER_URLS="{{ patroni_etcd_protocol | default('http', true) }}://{{ inventory_hostname }}:2380"
+# ETCD_INITIAL_CLUSTER_TOKEN="{{ etcd_cluster_token }}"
+# ETCD_INITIAL_CLUSTER="{% for host in groups['etcd'] %}{{ hostvars[host]['ansible_hostname'] }}={{ patroni_etcd_protocol | default('http', true) }}://{{ hostvars[host]['inventory_hostname'] }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+# ETCD_INITIAL_CLUSTER_STATE="new"
+# ETCD_DATA_DIR="{{ etcd_data_dir }}"
+# ETCD_ELECTION_TIMEOUT="5000"
+# ETCD_HEARTBEAT_INTERVAL="1000"
+# ETCD_INITIAL_ELECTION_TICK_ADVANCE="false"
+# ETCD_AUTO_COMPACTION_RETENTION="1"
+
+ETCD_CERT_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_server_crt | default('server.crt') }}"
+ETCD_KEY_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_server_key | default('server.key') }}"
+ETCD_TRUSTED_CA_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_ca_crt | default('ca.crt') }}"
+ETCD_PEER_CERT_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_server_crt | default('server.crt') }}"
+ETCD_PEER_KEY_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_server_key | default('server.key') }}"
+ETCD_PEER_TRUSTED_CA_FILE="{{ etcd_tls_dir | default('/etc/etcd/tls') }}/{{ etcd_tls_ca_crt | default('ca.crt') }}"
+ETCD_PEER_CLIENT_CERT_AUTH="{{ etcd_peer_client_cert_auth | default("true") }}"
+ETCD_CLIENT_CERT_AUTH="{{ etcd_client_cert_auth | default("true") }}"
+ETCD_TLS_MIN_VERSION="TLS1.2"
 
 # ETCD_CLIENT_SECURE=true
 # ETCD_PEER_SECURE=true
 # ETCDCTL_CERT=
 # ETCDCTL_CACERT=?????.pem
 # ETCDCTL_KEY=?????.key
+{% endif %}
 
+
+
+{% if etcd_tls_enable | default(false) | bool %}
+export ETCD_CERT_FILE
+export ETCD_KEY_FILE
+export ETCD_TRUSTED_CA_FILE
+export ETCD_PEER_CERT_FILE
+export ETCD_PEER_KEY_FILE
+export ETCD_PEER_TRUSTED_CA_FILE
+export ETCD_PEER_CLIENT_CERT_AUTH
+export ETCD_CLIENT_CERT_AUTH
+export ETCD_TLS_MIN_VERSION
+#export  ETCD_CLIENT_SECURE
+#export  ETCD_PEER_SECURE
+#export  ETCDCTL_CERT
+#export  ETCDCTL_CACERT
+#export  ETCDCTL_KEY
+{% endif %}
 
 export ETCD_NAME
 export ETCD_DATA_DIR

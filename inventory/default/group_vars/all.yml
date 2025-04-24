@@ -3,15 +3,13 @@ patroni_version: "3.3.1"
 etcd_version: "v3.5.1"
 pgbackrest_version: "2.54.2"
 
-etcd_ports:
-  - 2379
-  - 2380
 
-postgres_ports:
-  - 8008
-  - 5432
 
-pgbackrest_repo_id: 1 #default value to be used if not set in inventory file
+
+
+ 
+
+
 pgbackrest_stanza: "default"
 pgbackrest_backup_username: "postgres"
 pgbackrest_backup_password: "test"
