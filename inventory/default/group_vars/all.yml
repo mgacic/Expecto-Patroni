@@ -5,11 +5,6 @@ pgbackrest_version: "2.54.2"
 
 
 
-
-
- 
-
-
 pgbackrest_stanza: "default"
 pgbackrest_backup_username: "postgres"
 pgbackrest_backup_password: "test"
