@@ -3,37 +3,45 @@
   include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
+- name: Create user 'pgbackrest' with home in opt
+  ansible.builtin.user:
+    name: pgbackrest
+    shell: /bin/bash
+    home: /opt/pgbackrest
+    create_home: yes
+    state: present
+
 - name: Create pgbackrest configuration directory
   file:
     path: /etc/pgbackrest
     state: directory
-    owner: postgres
-    group: postgres
+    owner: pgbackrest
+    group: pgbackrest
     mode: '0750'
 
-- name: Create pgbackrest configuration directory
-  file:
-    path: /opt/pgbackrest
-    state: directory
-    owner: postgres
-    group: postgres
-    mode: '0750'
-  when: "'pgbackrest' in group_names"
+# - name: Create pgbackrest configuration directory
+#   file:
+#     path: /opt/pgbackrest
+#     state: directory
+#     owner: pgbackrest
+#     group: pgbackrest
+#     mode: '0750'
+#   when: "'pgbackrest' in group_names"
 
 - name: Create pgbackrest log directory
   file:
     path: /var/log/pgbackrest
     state: directory
-    owner: postgres
-    group: postgres
+    owner: pgbackrest
+    group: pgbackrest
     mode: '0750'
 
 - name: Create pgbackrest config
   template:
     src: pgbackrest.conf.j2
     dest: /etc/pgbackrest/pgbackrest.conf
-    owner: postgres
-    group: postgres
+    owner: pgbackrest
+    group: pgbackrest
     mode: '0640'
   when: "'pgbackrest' in group_names"
   
@@ -41,17 +49,17 @@
   template:
     src: backup.sh.j2
     dest: /opt/backup.sh
-    owner: postgres
-    group: postgres
+    owner: pgbackrest
+    group: pgbackrest
     mode: '0740'
   when: "'pgbackrest' in group_names"
 
 - name: Create .pgpass file for pgBackRest
   template:
     src: pgpass.yml.j2
-    dest: /var/lib/pgsql/.pgpass
-    owner: postgres
-    group: postgres
+    dest: /opt/pgbackrest/.pgpass
+    owner: pgbackrest
+    group: pgbackrest
     mode: '0600'
   when: "'pgbackrest' in group_names"
 
@@ -64,7 +72,7 @@
     month: "{{ pgbackrest_crontab_interval_full.split(' ')[3] }}"
     weekday: "{{ pgbackrest_crontab_interval_full.split(' ')[4] }}"
     job: "/opt/backup.sh -t full -s {{ pgbackrest_stanza }}"
-    user: postgres
+    user: pgbackrest
   when: 
     - pgbackrest_crontab_interval_full is defined
     - "'pgbackrest' in group_names"
@@ -78,83 +86,10 @@
     month: "{{ pgbackrest_crontab_interval_diff.split(' ')[3] }}"
     weekday: "{{ pgbackrest_crontab_interval_diff.split(' ')[4] }}"
     job: "/opt/backup.sh -t diff -s {{ pgbackrest_stanza }}"
-    user: postgres
+    user: pgbackrest
   when: 
     - pgbackrest_crontab_interval_diff is defined
     - "'pgbackrest' in group_names"
 
-- name: Ensure .ssh directory exists for postgres
-  file:
-    path: /var/lib/pgsql/.ssh
-    state: directory
-    owner: postgres
-    group: postgres
-    mode: '0700'
-  become: true
-  become_user: postgres
-
-- name: Generate SSH key for postgres user if not present
-  become: true
-  become_user: postgres
-  ansible.builtin.openssh_keypair:
-    path: /var/lib/pgsql/.ssh/id_rsa
-    type: rsa
-    size: 4096
-    owner: postgres
-    group: postgres
-    mode: '0600'
-    comment: "{{ inventory_hostname }}"
-  when: not ("/var/lib/pgsql/.ssh/id_rsa" is file)
-
-- name: Read public key
-  become: true
-  become_user: postgres
-  slurp:
-    src: /var/lib/pgsql/.ssh/id_rsa.pub
-  register: postgres_pubkey
-
-- name: Set fact for postgres public key
-  set_fact:
-    postgres_pubkey: "{{ postgres_pubkey.content | b64decode }}"
-
-- name: Add pgbackrest public keys to authorized_keys on postgres nodes
-  authorized_key:
-    user: postgres
-    key: "{{ hostvars[item]['postgres_pubkey'] }}"
-    manage_dir: false
-    path: /var/lib/pgsql/.ssh/authorized_keys
-  loop: "{{ groups['pgbackrest'] | difference([inventory_hostname]) | unique }}"
-  when: 
-    - hostvars[item].postgres_pubkey is defined 
-    - inventory_hostname in groups['postgres']
-  become: true       
-
-- name: Add SSH key of postgres host to known_hosts on pgbackrest
-  ansible.builtin.shell:
-    cmd: "ssh-keyscan -H {{ item }} >> /var/lib/pgsql/.ssh/known_hosts"
-  loop: "{{ groups['pgbackrest'] | unique }}"
-  when: item != inventory_hostname
-  become: true
-  become_user: postgres
-  when: inventory_hostname in groups['postgres']
-
-- name: Add postgres public keys to authorized_keys on pgbackrest nodes
-  authorized_key:
-    user: postgres
-    key: "{{ hostvars[item]['postgres_pubkey'] }}"
-    manage_dir: false
-    path: /var/lib/pgsql/.ssh/authorized_keys
-  loop: "{{ groups['postgres'] | difference([inventory_hostname]) | unique }}"
-  when: 
-    - hostvars[item].postgres_pubkey is defined 
-    - inventory_hostname in groups['pgbackrest']
-  become: true   
-
-- name: Add SSH key of pgbackrest host to known_hosts on postgres
-  ansible.builtin.shell:
-    cmd: "ssh-keyscan -H {{ item }} >> /var/lib/pgsql/.ssh/known_hosts"
-  loop: "{{ groups['postgres'] | unique }}"
-  when: item != inventory_hostname
-  become: true
-  become_user: postgres
-  when: inventory_hostname in groups['pgbackrest']
+- name: Include exchange SSH keys tasks
+  include_tasks: ssh_keys.yml

@@ -23,13 +23,14 @@ etcd{{ loop.index }}=http://{{ ip }}:2380
 {%- endif -%}
 {%- if not loop.last %},{% endif -%}
 {%- endfor %}
-ETCD_INITIAL_CLUSTER_TOKEN= {{ etcd_cluster_token}}
+
+ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_cluster_token}}
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCDCTL_API=3
 ETCD_AUTO_COMPACTION_MODE=periodic
 ETCD_AUTO_COMPACTION_RETENTION=1
-ETCD_ELECTION_TIMEOUT= {{ etcd_election_timeout }}
-ETCD_HEARTBEAT_INTERVAL= {{ etcd_hartbeat_interval }}
+ETCD_ELECTION_TIMEOUT={{ etcd_election_timeout }}
+ETCD_HEARTBEAT_INTERVAL={{ etcd_hartbeat_interval }}
 ETCDCTL_ENDPOINTS={% for host in groups['postgres'] %}http://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2379{% if not loop.last %},{% endif %}{% endfor %}
 
 

@@ -1,0 +1,119 @@
+- name: Ensure .ssh directory exists for postgres
+  file:
+    path: /var/lib/pgsql/.ssh
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  become: true
+  become_user: postgres
+  when: inventory_hostname in groups['postgres']
+
+- name: Ensure .ssh directory exists for pgbackrest
+  file:
+    path: /opt/pgbackrest/.ssh
+    state: directory
+    owner: pgbackrest
+    group: pgbackrest
+    mode: '0700'
+  become: true
+  become_user: pgbackrest
+  when: inventory_hostname in groups['pgbackrest']
+
+- name: Generate SSH key for postgres user if not present
+  become: true
+  become_user: postgres
+  ansible.builtin.openssh_keypair:
+    path: /var/lib/pgsql/.ssh/id_rsa
+    type: rsa
+    size: 4096
+    owner: postgres
+    group: postgres
+    mode: '0600'
+    comment: "{{ inventory_hostname }}"
+  when: 
+    - not ("/var/lib/pgsql/.ssh/id_rsa" is file)
+    - inventory_hostname in groups['postgres']
+
+- name: Generate SSH key for pgbackrest user if not present
+  become: true
+  become_user: pgbackrest
+  ansible.builtin.openssh_keypair:
+    path: /opt/pgbackrest/.ssh/id_rsa
+    type: rsa
+    size: 4096
+    owner: pgbackrest
+    group: pgbackrest
+    mode: '0600'
+    comment: "{{ inventory_hostname }}"
+  when: 
+    - not ("/opt/pgbackrest/.ssh/id_rsa" is file)
+    - inventory_hostname in groups['pgbackrest']
+
+- name: Read pgbackrest public key
+  become: true
+  become_user: pgbackrest
+  slurp:
+    src: /opt/pgbackrest/.ssh/id_rsa.pub
+  register: pgbackrest_pub_key
+  when: inventory_hostname in groups['pgbackrest']
+
+- name: Read postgres public key
+  become: true
+  become_user: postgres
+  slurp:
+    src: /var/lib/pgsql/.ssh/id_rsa.pub
+  register: postgres_pub_key
+  when: inventory_hostname in groups['postgres']
+
+- name: Set fact for pgbackrest public key
+  set_fact:
+    pgbackrest_pub_key: "{{ pgbackrest_pub_key.content | b64decode }}"
+  when: inventory_hostname in groups['pgbackrest']
+
+- name: Set fact for postgres public key
+  set_fact:
+    postgres_pub_key: "{{ postgres_pub_key.content | b64decode }}"
+  when: inventory_hostname in groups['postgres']
+
+- name: Add pgBackrest public keys to authorized_keys on postgres nodes
+  authorized_key:
+    user: postgres
+    key: "{{ hostvars[item]['pgbackrest_pub_key'] }}"
+    manage_dir: false
+    path: /var/lib/pgsql/.ssh/authorized_keys
+  loop: "{{ groups['pgbackrest'] | difference([inventory_hostname]) | unique }}"
+  when: 
+    - hostvars[item].pgbackrest_pub_key is defined 
+    - inventory_hostname in groups['postgres']
+  become: true       
+
+- name: Add postgres public keys to authorized_keys on pgbackrest nodes
+  authorized_key:
+    user: pgbackrest
+    key: "{{ hostvars[item]['postgres_pub_key'] }}"
+    manage_dir: false
+    path: /opt/pgbackrest/.ssh/authorized_keys
+  loop: "{{ groups['postgres'] | difference([inventory_hostname]) | unique }}"
+  when: 
+    - hostvars[item].postgres_pub_key is defined 
+    - inventory_hostname in groups['pgbackrest']
+  become: true   
+
+- name: Add SSH key of pgbackrest host to known_hosts on postgres
+  ansible.builtin.shell:
+    cmd: "ssh-keyscan -H {{ item }} >> /var/lib/pgsql/.ssh/known_hosts"
+  loop: "{{ groups['pgbackrest'] | unique }}"
+  when: item != inventory_hostname
+  become: true
+  become_user: postgres
+  when: inventory_hostname in groups['postgres']
+
+- name: Add SSH key of postgres host to known_hosts on pgbackrest
+  ansible.builtin.shell:
+    cmd: "ssh-keyscan -H {{ item }} >> /opt/pgbackrest/.ssh/known_hosts"
+  loop: "{{ groups['postgres'] | unique }}"
+  when: item != inventory_hostname
+  become: true
+  become_user: pgbackrest
+  when: inventory_hostname in groups['pgbackrest']
