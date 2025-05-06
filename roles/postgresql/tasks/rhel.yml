@@ -14,12 +14,20 @@
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
   become: true 
 
-- name: Open PostgreSQL and Patroni ports in firewalld
+- name: Check if firewalld is running
+  shell: systemctl is-active firewalld
+  register: firewalld_status
+  changed_when: false
+  failed_when: false
+
+- name: Open PostgreSQL ports in firewalld
   ansible.posix.firewalld:
     port: "{{ item }}/tcp"
     permanent: true
     state: enabled
     immediate: true
   loop: "{{ postgres_ports }}"
-  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-  become: true 
+  when: 
+    - ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+    - firewalld_status.stdout == 'active'
+  become: true

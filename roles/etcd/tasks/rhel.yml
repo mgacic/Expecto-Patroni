@@ -6,6 +6,12 @@
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
   become: true 
   
+- name: Check if firewalld is running
+  shell: systemctl is-active firewalld
+  register: firewalld_status
+  changed_when: false
+  failed_when: false
+
 - name: Open etcd ports in firewalld
   ansible.posix.firewalld:
     port: "{{ item }}/tcp"
@@ -13,5 +19,7 @@
     state: enabled
     immediate: true
   loop: "{{ etcd_ports }}"
-  when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
-  become: true 
+  when: 
+    - ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
+    - firewalld_status.stdout == 'active'
+  become: true
