@@ -2,6 +2,14 @@
   hosts: all
   gather_facts: yes
 
+
+- name: Generate ceritificates
+  hosts: all
+  become: true
+  tags: [certs]
+  roles:
+    - { role: cert_handlers }
+
 - name: Install etcd on etcd hosts
   hosts: etcd
   become: true

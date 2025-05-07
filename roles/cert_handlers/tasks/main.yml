@@ -1,0 +1,19 @@
+- name: Set TLS dir owner 
+  set_fact:
+    tls_dir_owner: >-
+      {{ 'postgres' if inventory_hostname in groups['postgres']
+         else 'pgbackrest' if inventory_hostname in groups['pgbackrest']
+         else 'root' }}
+
+- name: Ensure TLS directory exists
+  file:
+    path: "{{ tls_dir }}"
+    state: directory
+    mode: '0700'
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+  when: generate_self_signed_certificates
+
+- name: "Create a self signed certificates"
+  include_tasks: "{{ cert_method }}.yml"  
+  when: cert_method is defined

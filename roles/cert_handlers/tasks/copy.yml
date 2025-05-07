@@ -1,0 +1,56 @@
+- name: Ensure server certificate and key exist before proceeding
+  block:
+    - name: Check if server certificate exists
+      stat:
+        path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+      register: server_crt_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Check if server key exists
+      stat:
+        path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+      register: server_key_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Fail if either server certificate or key does not exist
+      fail:
+        msg: >-
+          One or both of the required server files are missing:
+          {{ inventory_hostname }}.server.crt or {{ inventory_hostname }}.server.key
+      when: not server_crt_stat.stat.exists or not server_key_stat.stat.exists
+  run_once: true
+
+- name: Check if CA private key exists
+  stat:
+    path: "{{ inventory_dir }}/certs/ca.key"
+  register: ca_key_stat
+  become: false
+  run_once: true
+  delegate_to: localhost
+
+- name: Distribute CA certificate
+  copy:
+    src: "{{ inventory_dir }}/certs/ca.crt"
+    dest: "{{ tls_dir }}/ca.crt"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0644'
+  when: ca_key_stat.stat.exists == true
+
+- name: Distribute server certificate
+  copy:
+    src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+    dest: "{{ tls_dir }}/server.crt"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0644'
+
+- name: Distribute server key
+  copy:
+    src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+    dest: "{{ tls_dir }}/server.key"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0600'

@@ -1,0 +1,16 @@
+- name: Set TLS owner for pgBackRest
+  set_fact:
+    pgbackrest_tls_owner: "{{ 'postgres' if inventory_hostname in groups['postgres'] else 'pgbackrest' }}"
+  when: inventory_hostname in groups['postgres'] or inventory_hostname in groups['pgbackrest']
+
+- name: Ensure /etc/pgbackrest/ssl directory exists
+  file:
+    path: /etc/pgbackrest/ssl
+    state: directory
+    owner: "{{ pgbackrest_tls_owner }}"
+    group: "{{ pgbackrest_tls_owner }}"
+    mode: '0700'
+  become: true
+  become_user: "{{ pgbackrest_tls_owner }}"
+  when: pgbackrest_tls_owner is defined
+

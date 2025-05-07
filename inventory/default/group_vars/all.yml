@@ -4,7 +4,15 @@ etcd_version: "v3.5.1"
 pgbackrest_version: "2.54.2"
 
 
+#certificates
+cert_method: self_signed
+self_signed_cert_days_valid: 365
 
+tls_dir: /opt/tls/certs
+tls_ca_cert_host: "{{ ansible_play_hosts[0] }}"
+
+
+#pgBackrest
 pgbackrest_stanza: "default"
 pgbackrest_backup_username: "postgres"
 pgbackrest_backup_password: "test"
@@ -12,18 +20,24 @@ pgbackrest_cipher_pass: "Yf8E4coA2SukDpWyOe9KXZhGbq/v1JNL7xMCRdmUg+TwPnLIhs6HjaY
 pgbackrest_log_path: "/var/log/pgbackrest/"
 pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
 pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM
+pgbackrest_host_protocol: ssh # ssh / tls
+generate_self_signed_certificates: true
 
+
+# PostgreSQL
 pg_data_dir: "/opt/postgresql/{{ pg_version }}/data/"
 pg_db_symlink: "/opt/postgresql/current"
-
 patroni_scope: postgresql17
 patroni_namespace: "/patroni_clusters/"
 patroni_replication_username: repl
 patroni_replication_password: replication_password
-
 patroni_superuser_username: postgres
 patroni_superuser_password: postgres_password
 
+
+
+
+# Packages
 repos_rhel:
   - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
   - epel-release

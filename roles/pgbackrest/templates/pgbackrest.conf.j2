@@ -8,7 +8,18 @@ repo{{ pgbackrest_repo_id }}-retention-archive-type=diff
 repo{{ pgbackrest_repo_id }}-retention-archive=2
 repo{{ pgbackrest_repo_id }}-bundle=n 
 repo{{ pgbackrest_repo_id }}-bundle-size=1024MiB 
-repo{{ pgbackrest_repo_id }}-bundle-limit=128MiB 
+repo{{ pgbackrest_repo_id }}-bundle-limit=128MiB
+
+{% if pgbackrest_host_protocol=="tls" | default(ssh) %}
+repo{{ pgbackrest_repo_id }}-host=repo-host
+repo{{ pgbackrest_repo_id }}-host-user=pgbackrest
+repo{{ pgbackrest_repo_id }}-host-type=tls
+repo{{ pgbackrest_repo_id }}-tls-port=9090
+repo{{ pgbackrest_repo_id }}-tls-ca-file=/etc/pgbackrest/tls/ca.crt
+repo{{ pgbackrest_repo_id }}-tls-cert-file=/etc/pgbackrest/tls/client.crt
+repo{{ pgbackrest_repo_id }}-tls-key-file=/etc/pgbackrest/tls/client.key
+{% endif %}
+
 start-fast=y
 compress-type=lz4
 log-level-console=info
@@ -16,3 +27,12 @@ log-level-file=info
 backup-standby=y
 delta=y
 checksum-page=y
+
+{% if pgbackrest_host_protocol=="tls" | default(ssh) %}
+[global:tls-server]
+tls-server-address=0.0.0.0
+tls-server-port={{pgbackrest_tls_port}}
+tls-server-cert=/etc/pgbackrest/tls/server.crt
+tls-server-key=/etc/pgbackrest/tls/server.key
+tls-server-ca=/etc/pgbackrest/tls/ca.crt
+{% endif %}

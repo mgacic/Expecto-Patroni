@@ -19,15 +19,6 @@
     group: pgbackrest
     mode: '0750'
 
-# - name: Create pgbackrest configuration directory
-#   file:
-#     path: /opt/pgbackrest
-#     state: directory
-#     owner: pgbackrest
-#     group: pgbackrest
-#     mode: '0750'
-#   when: "'pgbackrest' in group_names"
-
 - name: Create pgbackrest log directory
   file:
     path: /var/log/pgbackrest
@@ -91,5 +82,15 @@
     - pgbackrest_crontab_interval_diff is defined
     - "'pgbackrest' in group_names"
 
+- name: Fail if no pgBackrest protocol is defined
+  fail:
+    msg: "pgBackRest protocol (ssl/tls) must be defined."
+  when: not pgbackrest_host_protocol 
+
 - name: Include exchange SSH keys tasks
-  include_tasks: ssh_keys.yml
+  include_tasks: ssh.yml
+  when: pgbackrest_host_protocol=="ssh"
+
+- name: Include exchange SSH keys tasks
+  include_tasks: tls.yml
+  when: pgbackrest_host_protocol=="tls"  

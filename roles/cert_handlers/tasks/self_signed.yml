@@ -1,0 +1,110 @@
+# CA
+- name: Check if CA private key exists
+  stat:
+    path: "{{ inventory_dir }}/certs/ca.key"
+  register: ca_key_stat
+  become: false
+  run_once: true
+  delegate_to: localhost
+
+- name: Generate CA private key
+  command: openssl genrsa -out "{{ inventory_dir }}/certs/ca.key" 4096
+  args:
+    creates: "{{ inventory_dir }}/certs/ca.key"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: ca_key_stat.stat.exists == false
+
+- name: Generate CA certificate
+  command: >
+    openssl req -x509 -new -nodes
+    -key "{{ inventory_dir }}/certs/ca.key"
+    -sha256 -days 3650
+    -out "{{ inventory_dir }}/certs/ca.crt"
+    -subj "/CN=pgbackrest-CA"
+  args:
+    creates: "{{ inventory_dir }}/certs/ca.crt"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: ca_key_stat.stat.exists == false
+
+#Server
+- name: Generate server private key
+  command: openssl genrsa -out "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key" 2048
+  args:
+    creates: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+  delegate_to: localhost
+  become: false
+
+- name: Generate server CSR
+  command: >
+    openssl req -new -key "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+    -out "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.csr"
+    -subj "/CN={{ inventory_hostname }}"
+  args:
+    creates: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.csr"
+  delegate_to: localhost
+  become: false
+
+- name: Sign server certificate
+  command: >
+    openssl x509 -req
+    -in "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.csr"
+    -CA "{{ inventory_dir }}/certs/ca.crt"
+    -CAkey "{{ inventory_dir }}/certs/ca.key"
+    -CAcreateserial
+    -out "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+    -days 365
+  args:
+    creates: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+  delegate_to: localhost
+  become: false
+
+- name: Distribute CA certificate
+  copy:
+    src: "{{ inventory_dir }}/certs/ca.crt"
+    dest: "{{ tls_dir }}/ca.crt"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0644'
+
+- name: Distribute server certificate
+  copy:
+    src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+    dest: "{{ tls_dir }}/server.crt"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0644'
+
+- name: Distribute server key
+  copy:
+    src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+    dest: "{{ tls_dir }}/server.key"
+    owner: "{{ tls_dir_owner }}"
+    group: "{{ tls_dir_owner }}"
+    mode: '0600'
+
+# Delete server certificates stored locally (leaves CA files)
+
+- name: Delete local server private key
+  file:
+    path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
+    state: absent
+  delegate_to: localhost
+  become: false
+
+- name: Delete local server certificate
+  file:
+    path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
+    state: absent
+  delegate_to: localhost
+  become: false
+
+- name: Delete local server CSR
+  file:
+    path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.csr"
+    state: absent
+  delegate_to: localhost
+  become: false
