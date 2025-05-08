@@ -87,7 +87,6 @@
     mode: '0600'
 
 # Delete server certificates stored locally (leaves CA files)
-
 - name: Delete local server private key
   file:
     path: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
