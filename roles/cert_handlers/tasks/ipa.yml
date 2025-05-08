@@ -1,0 +1,21 @@
+- name: Request certificate from IPA server
+  command: >
+    ipa-getcert request
+    -f {{ tls_dir }}/server.crt
+    -k {{ tls_dir }}/server.key
+    -N CN=$(hostname -f)
+    -K host/$(hostname -f)
+    -r
+
+- name: Check if IPA CA certificate exists
+  stat:
+    path: /etc/ipa/ca.crt
+  register: ipa_ca_cert
+
+- name: Create symlink to IPA CA certificate
+  file:
+    src: /etc/ipa/ca.crt
+    dest: "{ tls_dir }}/ca.crt"
+    state: link
+  when: ipa_ca_cert.stat.exists
+
