@@ -6,9 +6,10 @@
 - name: Generate ceritificates
   hosts: all
   become: true
-  tags: [certs]
+  tags: [pki]
   roles:
-    - { role: cert_handlers }
+    - role: pki
+      when: pki is defined 
 
 - name: Install etcd on etcd hosts
   hosts: etcd

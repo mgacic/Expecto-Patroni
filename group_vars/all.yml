@@ -1,0 +1,95 @@
+pg_version: 17
+patroni_version: "3.3.1"
+etcd_version: "v3.5.1"
+pgbackrest_version: "2.54.2"
+
+
+#certificates
+pki: self_signed
+generate_self_signed_certificates: true
+# self_signed_cert_days_valid: 365
+
+tls_dir: /opt/pki/certs
+tls_ca_cert_host: "{{ ansible_play_hosts[0] }}"
+
+
+#pgBackrest
+pgbackrest_stanza: "default"
+pgbackrest_backup_username: "postgres"
+pgbackrest_backup_password: "test"
+pgbackrest_cipher_pass: "Yf8E4coA2SukDpWyOe9KXZhGbq/v1JNL7xMCRdmUg+TwPnLIhs6HjaYlFt3QzWOB"
+pgbackrest_log_path: "/var/log/pgbackrest/"
+pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
+pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM
+pgbackrest_host_protocol: ssh # ssh / tls
+
+
+
+# PostgreSQL
+pg_data_dir: "/opt/postgresql/{{ pg_version }}/data/"
+pg_db_symlink: "/opt/postgresql/current"
+patroni_scope: postgresql"{{ pg_version }}"
+patroni_namespace: "/patroni_clusters/"
+patroni_replication_username: repl
+patroni_replication_password: replication_password
+patroni_superuser_username: postgres
+patroni_superuser_password: postgres_password
+
+
+
+
+# Packages
+repos_rhel:
+  - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+  - epel-release
+
+packages_debian_all: 
+  - libxml2 
+  - python3-pip
+  - libssh2-1
+  - curl
+  - tar
+  - unzip
+  - nmon
+  - htop
+  - postgresql-common
+
+packages_debian_postgresql_group:
+  - postgresql-{{ pg_version }}
+  - postgresql-client-{{ pg_version }}
+  - pgbackrest-{{ pgbackrest_version }}
+  - libpq-dev
+
+packages_debian_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-libs
+
+packages_rhel_all: 
+  - libxml2 
+  - python3-pip
+  - libssh2
+  - curl
+  - tar
+  - unzip
+  - nmon
+  - htop
+
+packages_rhel_postgresql_group:
+  - postgresql{{ pg_version }}-server
+  - postgresql{{ pg_version }}
+  - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-contrib
+  - postgresql-libs 
+
+packages_rhel_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-libs 
+
+packages_postgresql_group_pip:
+  - { name: "patroni", state: "present" }
+  - { name: "psycopg2-binary", state: "present" }
+  - { name: "patroni[etcd3]=={{ patroni_version }}", state: "present" }
+  - { name: "ruamel.yaml", state: "present" }
+  - { name: "requests", state: "present" }
+  - { name: "cdiff", state: "present" } 
+  - { name: "ydiff", state: "absent" }

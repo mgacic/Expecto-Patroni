@@ -12,8 +12,6 @@
     mode: '0700'
     owner: "{{ tls_dir_owner }}"
     group: "{{ tls_dir_owner }}"
-  when: generate_self_signed_certificates
 
 - name: "Create a self signed certificates"
-  include_tasks: "{{ cert_method }}.yml"  
-  when: cert_method is defined
+  include_tasks: "{{ pki }}.yml"  
