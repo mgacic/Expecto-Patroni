@@ -1,6 +1,6 @@
 [global]
 repo{{ pgbackrest_repo_id }}-cipher-pass={{ pgbackrest_cipher_pass }}
-repo{{ pgbackrest_repo_id }}-cipher-type=aes-256-cbc
+repo{{ pgbackrest_repo_id }}-cipher-type={{ pgbackrest_cipher_type }}
 repo{{ pgbackrest_repo_id }}-path=/opt/pgbackrest
 repo{{ pgbackrest_repo_id }}-retention-full=2
 repo{{ pgbackrest_repo_id }}-retention-diff=2

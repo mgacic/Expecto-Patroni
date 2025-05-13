@@ -9,34 +9,28 @@ pki: self_signed
 generate_self_signed_certificates: true
 # self_signed_cert_days_valid: 365
 
-tls_dir: /opt/pki/certs
-tls_ca_cert_host: "{{ ansible_play_hosts[0] }}"
-
+pki_dir: /opt/pki/certs
 
 #pgBackrest
-pgbackrest_stanza: "default"
+pgbackrest_stanza: "{{ patroni_scope }}"
 pgbackrest_backup_username: "postgres"
 pgbackrest_backup_password: "test"
 pgbackrest_cipher_pass: "Yf8E4coA2SukDpWyOe9KXZhGbq/v1JNL7xMCRdmUg+TwPnLIhs6HjaYlFt3QzWOB"
+pgbackrest_cipher_type: "aes-256-cbc"
 pgbackrest_log_path: "/var/log/pgbackrest/"
 pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
 pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM
 pgbackrest_host_protocol: ssh # ssh / tls
 
-
-
 # PostgreSQL
 pg_data_dir: "/opt/postgresql/{{ pg_version }}/data/"
-pg_db_symlink: "/opt/postgresql/current"
+pg_db_symlink: "/opt/postgresql/data"
 patroni_scope: postgresql"{{ pg_version }}"
 patroni_namespace: "/patroni_clusters/"
 patroni_replication_username: repl
 patroni_replication_password: replication_password
 patroni_superuser_username: postgres
 patroni_superuser_password: postgres_password
-
-
-
 
 # Packages
 repos_rhel:

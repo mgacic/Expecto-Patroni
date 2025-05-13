@@ -33,24 +33,24 @@
 - name: Distribute CA certificate
   copy:
     src: "{{ inventory_dir }}/certs/ca.crt"
-    dest: "{{ tls_dir }}/ca.crt"
-    owner: "{{ tls_dir_owner }}"
-    group: "{{ tls_dir_owner }}"
+    dest: "{{ pki_dir }}/ca.crt"
+    owner: "root"
+    group: "root"
     mode: '0644'
   when: ca_key_stat.stat.exists == true
 
 - name: Distribute server certificate
   copy:
     src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.crt"
-    dest: "{{ tls_dir }}/server.crt"
-    owner: "{{ tls_dir_owner }}"
-    group: "{{ tls_dir_owner }}"
+    dest: "{{ pki_dir }}/server.crt"
+    owner: "root"
+    group: "root"
     mode: '0644'
 
 - name: Distribute server key
   copy:
     src: "{{ inventory_dir }}/certs/{{ inventory_hostname }}.server.key"
-    dest: "{{ tls_dir }}/server.key"
-    owner: "{{ tls_dir_owner }}"
-    group: "{{ tls_dir_owner }}"
+    dest: "{{ pki_dir }}/server.key"
+    owner: "root"
+    group: "root"
     mode: '0600'

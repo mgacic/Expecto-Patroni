@@ -40,7 +40,7 @@
 - name: Create symlink for PostgreSQL data directory
   ansible.builtin.file:
     src: "{{ pg_data_dir }}"
-    dest: "/opt/postgresql/data"
+    dest: "{{ pg_db_symlink }}"
     state: link
   when: pg_data_dir is defined
 
