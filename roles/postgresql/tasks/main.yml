@@ -3,6 +3,10 @@
   include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
+- name: Include Debian-specific PostgreSQL installation tasks
+  include_tasks: debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
 # Install Patroni
 - name: Install Patroni with pip (for all supported OSes)
   ansible.builtin.pip:

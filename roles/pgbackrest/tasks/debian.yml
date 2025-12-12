@@ -1,0 +1,41 @@
+---
+- name: Add PostgreSQL APT repository key (for pgBackRest)
+  apt_key:
+    url: "{{ postgres_apt_key_url }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Add PostgreSQL APT repository (for pgBackRest)
+  apt_repository:
+    repo: "{{ postgres_apt_repository }}"
+    state: present
+    filename: pgdg
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Update APT cache
+  apt:
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Install pgBackRest on Debian-based systems (postgres group)
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_debian_pgbackrest_group }}"
+  when: 
+    - ansible_facts['os_family'] == 'Debian'
+    - inventory_hostname in groups['postgres']
+  become: true
+
+- name: Install pgBackRest on Debian-based systems (pgbackrest group)
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_debian_pgbackrest_group }}"
+  when: 
+    - ansible_facts['os_family'] == 'Debian'
+    - inventory_hostname in groups['pgbackrest']
+  become: true
