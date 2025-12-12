@@ -3,20 +3,10 @@ patroni_version: "3.3.1"
 etcd_version: "v3.5.1"
 pgbackrest_version: "2.54.2"
 
-
-
-pgbackrest_stanza: "default"
-pgbackrest_backup_username: "postgres"
-pgbackrest_backup_password: "test"
-pgbackrest_cipher_pass: "Yf8E4coA2SukDpWyOe9KXZhGbq/v1JNL7xMCRdmUg+TwPnLIhs6HjaYlFt3QzWOB"
-pgbackrest_log_path: "/var/log/pgbackrest/"
-pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
-pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM
-
 pg_data_dir: "/opt/postgresql/{{ pg_version }}/data/"
 pg_db_symlink: "/opt/postgresql/current"
 
-patroni_scope: postgresql17
+patroni_scope: "postgresql-{{ pg_version }}"
 patroni_namespace: "/patroni_clusters/"
 patroni_replication_username: repl
 patroni_replication_password: replication_password
@@ -24,9 +14,30 @@ patroni_replication_password: replication_password
 patroni_superuser_username: postgres
 patroni_superuser_password: postgres_password
 
+pgbackrest_stanza: "{{patroni_scope}}"
+pgbackrest_backup_username: "postgres"
+pgbackrest_backup_password: "test"
+pgbackrest_cipher_pass: "Yf8E4coA2SukDpWyOe9KXZhGbq/v1JNL7xMCRdmUg+TwPnLIhs6HjaYlFt3QzWOB"
+pgbackrest_log_path: "/var/log/pgbackrest/"
+pgbackrest_crontab_interval_full: "0 2 * * MON,WED,FRI,SUN"  # Full backup: Mon, Wed, Fri, Sun at 2 AM
+pgbackrest_crontab_interval_diff: "0 2 * * TUE,THU,SAT"  # Diff backup: Tue, Thu, Sat at 2 AM
+
+
+# Distribution-specific postgres home directory
+postgres_home_dir: "{{ '/var/lib/pgsql' if ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky'] else '/var/lib/postgresql' }}"
+
 repos_rhel:
   - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
   - epel-release
+
+# Debian/Ubuntu PostgreSQL repository
+postgres_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+postgres_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+
+# etcd ports for firewall configuration
+etcd_ports:
+  - 2379
+  - 2380
 
 packages_debian_all: 
   - libxml2 
@@ -39,16 +50,6 @@ packages_debian_all:
   - htop
   - postgresql-common
 
-packages_debian_postgresql_group:
-  - postgresql-{{ pg_version }}
-  - postgresql-client-{{ pg_version }}
-  - pgbackrest-{{ pgbackrest_version }}
-  - libpq-dev
-
-packages_debian_pgbackrest_group:
-  - pgbackrest-{{ pgbackrest_version }}
-  - postgresql-libs
-
 packages_rhel_all: 
   - libxml2 
   - python3-pip
@@ -59,11 +60,22 @@ packages_rhel_all:
   - nmon
   - htop
 
+packages_debian_postgresql_group:
+  - postgresql-{{ pg_version }}
+  - postgresql-client-{{ pg_version }}
+  - postgresql-contrib-{{ pg_version }}
+  - pgbackrest-{{ pgbackrest_version }}
+  - libpq-dev
+  - python3-psycopg2
+
+packages_debian_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+
 packages_rhel_postgresql_group:
   - postgresql{{ pg_version }}-server
   - postgresql{{ pg_version }}
+  - postgresql{{ pg_version }}-contrib
   - pgbackrest-{{ pgbackrest_version }}
-  - postgresql-contrib
   - postgresql-libs 
 
 packages_rhel_pgbackrest_group:

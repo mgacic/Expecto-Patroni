@@ -1,0 +1,21 @@
+---
+# PostgreSQL Configuration
+
+# Data directory (same for all distributions)
+pg_data_dir: "/opt/postgresql/{{ pg_version }}/data/"
+pg_db_symlink: "/opt/postgresql/current"
+
+# Distribution-specific postgres home directory
+postgres_home_dir: "{{ '/var/lib/pgsql' if ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky'] else '/var/lib/postgresql' }}"
+
+# Patroni Configuration
+patroni_scope: "postgresql-{{ pg_version }}"
+patroni_namespace: "/patroni_clusters/"
+
+# Patroni Replication User
+patroni_replication_username: repl
+patroni_replication_password: replication_password
+
+# Patroni Superuser
+patroni_superuser_username: postgres
+patroni_superuser_password: postgres_password
