@@ -50,7 +50,7 @@ packages_rhel_postgresql_group:
   - postgresql{{ pg_version }}-server
   - postgresql{{ pg_version }}
   - postgresql{{ pg_version }}-contrib
-  - pgbackrest-{{ pgbackrest_version }}
+  # - pgbackrest-{{ pgbackrest_version }}
   - postgresql-libs
 
 # pgBackRest packages for RHEL (installed on pgbackrest group hosts)

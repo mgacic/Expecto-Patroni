@@ -48,7 +48,6 @@
     state: link
   when: pg_data_dir is defined
 
-# Configure Patroni (example configuration file)
 - name: Deploy etcd environment variables for all users
   template:
     src: patroni_profile_env.j2
@@ -112,4 +111,13 @@
     name: patroni
     enabled: true
     state: started
+
+# when adding new members we need to reload config for pg_hba.conf changes to take effect
+- name: Reload Patroni configuration
+  command: >
+    patronictl -c /etc/patroni/patroni.yml
+    reload {{ patroni_scope }}
+    --force
+  become: true
+
 

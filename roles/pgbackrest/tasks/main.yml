@@ -133,15 +133,6 @@
     - inventory_hostname in groups['postgres']
   become: true       
 
-- name: Add SSH key of postgres host to known_hosts on pgbackrest
-  ansible.builtin.shell:
-    cmd: "ssh-keyscan -H {{ item }} >> {{ postgres_home_dir }}/.ssh/known_hosts"
-  loop: "{{ groups['pgbackrest'] | unique }}"
-  when: item != inventory_hostname
-  become: true
-  become_user: postgres
-  when: inventory_hostname in groups['postgres']
-
 - name: Add postgres public keys to authorized_keys on pgbackrest nodes
   authorized_key:
     user: postgres
@@ -154,11 +145,18 @@
     - inventory_hostname in groups['pgbackrest']
   become: true   
 
-- name: Add SSH key of pgbackrest host to known_hosts on postgres
+- name: Add pgbackrest host SSH key to known_hosts on postgres
   ansible.builtin.shell:
     cmd: "ssh-keyscan -H {{ item }} >> {{ postgres_home_dir }}/.ssh/known_hosts"
   loop: "{{ groups['postgres'] | unique }}"
-  when: item != inventory_hostname
   become: true
   become_user: postgres
   when: inventory_hostname in groups['pgbackrest']
+
+- name: Add postgres host SSH key to known_hosts on pgbackrest
+  ansible.builtin.shell:
+    cmd: "ssh-keyscan -H {{ item }} >> {{ postgres_home_dir }}/.ssh/known_hosts"
+  loop: "{{ groups['pgbackrest'] | unique }}"
+  become: true
+  become_user: postgres
+  when: inventory_hostname in groups['postgres']
