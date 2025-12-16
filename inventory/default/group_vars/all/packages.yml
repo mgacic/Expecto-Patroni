@@ -1,0 +1,72 @@
+---
+# Package Lists
+
+# ============================================================================
+# Debian/Ubuntu Packages
+# ============================================================================
+
+# Base packages for all Debian-based systems
+packages_debian_all:
+  - libxml2
+  - python3-pip
+  - libssh2-1
+  - curl
+  - tar
+  - unzip
+  - nmon
+  - htop
+  - postgresql-common
+
+# PostgreSQL packages for Debian (installed on postgres group hosts)
+packages_debian_postgresql_group:
+  - postgresql-{{ pg_version }}
+  - postgresql-client-{{ pg_version }}
+  - postgresql-contrib-{{ pg_version }}
+  - pgbackrest-{{ pgbackrest_version }}
+  - libpq-dev
+  - python3-psycopg2
+
+# pgBackRest packages for Debian (installed on pgbackrest group hosts)
+packages_debian_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+
+# ============================================================================
+# RHEL/CentOS/Rocky Packages
+# ============================================================================
+
+# Base packages for all RHEL-based systems
+packages_rhel_all:
+  - libxml2
+  - python3-pip
+  - libssh2
+  - curl
+  - tar
+  - unzip
+  - nmon
+  - htop
+
+# PostgreSQL packages for RHEL (installed on postgres group hosts)
+packages_rhel_postgresql_group:
+  - postgresql{{ pg_version }}-server
+  - postgresql{{ pg_version }}
+  - postgresql{{ pg_version }}-contrib
+  # - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-libs
+
+# pgBackRest packages for RHEL (installed on pgbackrest group hosts)
+packages_rhel_pgbackrest_group:
+  - pgbackrest-{{ pgbackrest_version }}
+  - postgresql-libs
+
+# ============================================================================
+# Python Packages (via pip - all distributions)
+# ============================================================================
+
+packages_postgresql_group_pip:
+  - { name: "patroni", state: "present" }
+  - { name: "psycopg2-binary", state: "present" }
+  - { name: "patroni[etcd3]=={{ patroni_version }}", state: "present" }
+  - { name: "ruamel.yaml", state: "present" }
+  - { name: "requests", state: "present" }
+  - { name: "cdiff", state: "present" }
+  - { name: "ydiff", state: "absent" }

@@ -6,7 +6,7 @@
   loop: "{{ repos_rhel }}"
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
-- name: Install pgBackrest on RHEL-based systems
+- name: Install PostgreSQL and pgBackRest on RHEL-based systems
   package:
     name: "{{ item }}"
     state: present

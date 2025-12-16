@@ -1,0 +1,8 @@
+---
+# Component Versions
+# Update these to install different versions
+
+pg_version: 17
+patroni_version: "3.3.1"
+etcd_version: "v3.5.1"
+pgbackrest_version: "2.57.0"

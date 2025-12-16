@@ -1,0 +1,11 @@
+---
+# Package Repository Configuration
+
+# RHEL/CentOS/Rocky Repositories
+repos_rhel:
+  - https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_facts['distribution_major_version'] }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+  - epel-release
+
+# Debian/Ubuntu PostgreSQL Repository
+postgres_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+postgres_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"

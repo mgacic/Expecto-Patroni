@@ -1,0 +1,82 @@
+---
+- name: Add PostgreSQL APT repository key
+  apt_key:
+    url: "{{ postgres_apt_key_url }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Add PostgreSQL APT repository
+  apt_repository:
+    repo: "{{ postgres_apt_repository }}"
+    state: present
+    filename: pgdg
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Update APT cache
+  apt:
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Prevent automatic PostgreSQL cluster creation
+  lineinfile:
+    path: /etc/postgresql-common/createcluster.conf
+    regexp: '^#?create_main_cluster'
+    line: 'create_main_cluster = false'
+    create: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Install PostgreSQL and pgBackRest on Debian-based systems
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_debian_all + packages_debian_postgresql_group }}"
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true 
+
+- name: Stop and disable default PostgreSQL service (if exists)
+  systemd:
+    name: "postgresql@{{ pg_version }}-main"
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Stop and disable generic PostgreSQL service (if exists)
+  systemd:
+    name: postgresql
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'Debian'
+  become: true
+
+- name: Check if UFW is installed
+  command: which ufw
+  register: ufw_check
+  changed_when: false
+  failed_when: false
+
+- name: Check if UFW is active
+  command: ufw status
+  register: ufw_status
+  changed_when: false
+  failed_when: false
+  when: ufw_check.rc == 0
+
+- name: Open PostgreSQL ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ postgres_ports }}"
+  when: 
+    - ansible_facts['os_family'] == 'Debian'
+    - ufw_check.rc == 0
+    - ufw_status.stdout is defined
+    - "'Status: active' in ufw_status.stdout"
+  become: true

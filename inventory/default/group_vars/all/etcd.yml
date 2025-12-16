@@ -1,0 +1,7 @@
+---
+# etcd Configuration
+
+# Network ports
+etcd_ports:
+  - 2379  # Client communication
+  - 2380  # Peer communication

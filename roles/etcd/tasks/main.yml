@@ -3,6 +3,10 @@
   include_tasks: rhel.yml
   when: ansible_facts['os_family'] in ['RedHat', 'CentOS', 'Rocky']
 
+- name: Include Debian-specific etcd installation tasks
+  include_tasks: debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
 - name: Download etcd tarball
   get_url:
     url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
